@@ -13,6 +13,7 @@ import argparse
 import glob
 import os
 import shutil
+import sys
 
 from pyspark.sql import SparkSession, Window
 from pyspark.sql import functions as F
@@ -23,6 +24,31 @@ from pyspark.sql.types import (
     StructField,
     StructType,
 )
+
+
+def check_java():
+    """Warn early on Java 18+, which PySpark 3.5 doesn't officially support."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["java", "-version"], capture_output=True, text=True, check=False
+        ).stderr
+        first_line = out.splitlines()[0] if out else ""
+        if any(v in first_line for v in ['"18', '"19', '"20', '"21', '"22', '"23']):
+            print(
+                f"[spark_etl] WARNING: detected {first_line.strip()} - "
+                "PySpark 3.5.x officially supports Java 8/11/17 and may fail "
+                "to start with Java 18+. If SparkSession.builder.getOrCreate() "
+                "errors out below, install Java 17 (e.g. `sdk install java 17.0.11-tem` "
+                "or your OS's openjdk-17 package) and set JAVA_HOME to it.",
+                file=sys.stderr,
+            )
+    except FileNotFoundError:
+        print("[spark_etl] ERROR: no `java` found on PATH. PySpark requires a "
+              "JDK (8, 11, or 17) even though it needs no cluster. Install one "
+              "(e.g. `apt install openjdk-17-jdk` or `brew install openjdk@17`) "
+              "and ensure JAVA_HOME is set.", file=sys.stderr)
+        sys.exit(1)
 
 
 RAW_SCHEMA = StructType([
@@ -56,6 +82,7 @@ def build_spark(app_name: str = "freight-etl") -> SparkSession:
 
 
 def run(input_path: str, output_path: str) -> None:
+    check_java()
     spark = build_spark()
     spark.sparkContext.setLogLevel("WARN")
 
