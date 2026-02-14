@@ -31,6 +31,19 @@ NUMERIC = [
 TARGET = "is_delayed"
 
 
+def try_log_mlflow(params: dict, metrics: dict):
+    """Log params and metrics to MLflow if it's installed."""
+    try:
+        import mlflow
+        with mlflow.start_run(run_name="delay-risk-rf"):
+            mlflow.log_params(params)
+            mlflow.log_metrics(metrics)
+        print("[train] logged run to MLflow")
+    except ImportError:
+        print("[train] mlflow not installed - skipping experiment tracking "
+              "(pip install mlflow to enable)")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", default="data/features.csv")
@@ -99,6 +112,8 @@ def main():
     with open(args.metrics_out, "w") as f:
         json.dump(metrics, f, indent=2)
     print(f"[train] saved model bundle to {args.out}")
+
+    try_log_mlflow(params, metrics)
 
 
 if __name__ == "__main__":
