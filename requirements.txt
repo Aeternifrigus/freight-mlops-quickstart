@@ -1,4 +1,6 @@
 pyspark>=3.4,<4.0
 pandas==2.2.2
 numpy==1.26.4
+scikit-learn==1.5.2
+joblib==1.4.2
 ruff>=0.8,<1
