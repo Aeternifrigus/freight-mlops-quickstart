@@ -1,4 +1,4 @@
-.PHONY: data etl train lint all clean
+.PHONY: data etl train test-lambda lint all clean
 
 data:
 	python data/generate_data.py --rows 20000 --out data/raw_shipments.csv
@@ -8,12 +8,17 @@ etl:
 
 train:
 	python train/train_model.py --input data/features.csv --out train/model_bundle.joblib
+	cp train/model_bundle.joblib serve/model_bundle.joblib
+	python etl/build_carrier_reference.py --input data/features.csv --out serve/carrier_reference.json
+
+test-lambda:
+	cd serve && python test_local.py
 
 lint:
 	ruff check .
 
-all: data etl train
+all: data etl train test-lambda
 
 clean:
 	rm -f data/raw_shipments.csv data/features.csv train/model_bundle.joblib \
-	      train/metrics.json
+	      train/metrics.json serve/model_bundle.joblib serve/carrier_reference.json
