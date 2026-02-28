@@ -6,3 +6,6 @@ joblib==1.4.2
 ruff>=0.8,<1
 # optional: experiment tracking in train_model.py
 # mlflow==2.14.1
+# optional: SageMaker deploy
+# boto3==1.34.144
+# sagemaker==2.224.1
