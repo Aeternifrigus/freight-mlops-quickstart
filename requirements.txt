@@ -1,0 +1,10 @@
+pyspark>=3.4,<4.0
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.2
+joblib==1.4.2
+# optional, enables experiment tracking in train_model.py if present:
+# mlflow==2.14.1
+# optional, only needed for the SageMaker deploy path:
+# boto3==1.34.144
+# sagemaker==2.224.1

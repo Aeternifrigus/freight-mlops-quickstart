@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# terraform
+infra/terraform/.terraform/
+infra/terraform/.terraform.lock.hcl
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/*.tfvars
+
+# sagemaker build artifacts
+infra/sagemaker/model.tar.gz
+infra/sagemaker/_staging/
+
+.DS_Store
+
+# private interview-prep notes - never push these
+INTERVIEW_NOTES.md
