@@ -1,0 +1,31 @@
+{
+  "CMA-CGM": {
+    "carrier_avg_delay_rate": 0.4322884012539185,
+    "carrier_shipment_count": 3190
+  },
+  "DB Schenker": {
+    "carrier_avg_delay_rate": 0.1887694145758661,
+    "carrier_shipment_count": 3348
+  },
+  "DHL-Freight": {
+    "carrier_avg_delay_rate": 0.2991150442477876,
+    "carrier_shipment_count": 3390
+  },
+  "Expeditors": {
+    "carrier_avg_delay_rate": 0.0655296229802513,
+    "carrier_shipment_count": 3342
+  },
+  "Kuehne+Nagel": {
+    "carrier_avg_delay_rate": 0.1118500604594921,
+    "carrier_shipment_count": 3308
+  },
+  "MaerskX": {
+    "carrier_avg_delay_rate": 0.1536135470214696,
+    "carrier_shipment_count": 3307
+  },
+  "_default": {
+    "carrier_avg_delay_rate": 0.20729192858938894,
+    "carrier_shipment_count": 3315
+  },
+  "_lane_default": 221
+}
