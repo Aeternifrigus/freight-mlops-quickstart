@@ -154,5 +154,5 @@ ground than doing one perfectly.
 
 ## Author
 
-Kumar Kaustuv Das — [github.com/Aeternifrigus](https://github.com/Aeternifrigus)
+Aeternifrigus — [github.com/Aeternifrigus](https://github.com/Aeternifrigus)
 
