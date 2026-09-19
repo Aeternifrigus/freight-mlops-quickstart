@@ -4,6 +4,7 @@ numpy==1.26.4
 scikit-learn==1.5.2
 joblib==1.4.2
 ruff>=0.8,<1
+pytest>=8.3,<9
 # optional: experiment tracking in train_model.py
 # mlflow==2.14.1
 # optional: SageMaker deploy

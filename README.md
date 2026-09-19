@@ -34,7 +34,8 @@ Typical output:
 
 ```
 [spark_etl] raw rows: 20020 -> clean rows: 19885 -> final rows: 19885
-[train] metrics: accuracy 0.695, precision 0.363, recall 0.626, f1 0.460, roc_auc 0.715
+[train] cutoff 2025-03-09: 15943 train, 3942 test
+[train] metrics: accuracy 0.686, precision 0.350, recall 0.605, f1 0.443, roc_auc 0.708
 ```
 
 About 21% of shipments are delayed, so the forest uses `class_weight="balanced"`
@@ -47,16 +48,26 @@ and trades precision for recall.
 - drops duplicate shipment ids, rows with missing weight or fuel index, and
   non-positive weights or distances
 - sets `is_delayed = actual_transit_days > promised_transit_days`
-- adds value density, ship month, per-carrier delay rate and shipment count
-  (groupBy), and per-lane volume (window)
+- adds value density and ship month
 - drops `actual_transit_days` and `freight_cost_usd`, which are only known after
   delivery
 
 ## Serving
 
-A request only carries the carrier name, so the carrier and lane aggregates are
-looked up in `serve/carrier_reference.json`, built from the feature table by
-`etl/build_carrier_reference.py`.
+A request only carries the carrier and the lane, so the history features are
+looked up in `serve/carrier_reference.json`. Training writes that file from the
+training split, so serving uses exactly the values the model was trained and
+evaluated with.
+
+## Training
+
+`train/train_model.py` splits by ship date (newest 20% is the test set), then
+fits the history features on the training rows only
+(`train/history_features.py`): per-carrier delay rate and shipment count, and
+per-lane volume. They are left out of the ETL on purpose: computed over the
+whole table, the carrier delay rate would contain the test set's own labels.
+`make test` checks that flipping every test label changes none of the test
+features.
 
 ### Lambda
 
@@ -100,8 +111,6 @@ idle, so run `python infra/sagemaker/cleanup_sagemaker.py` when you're done.
 ## Limitations
 
 - The data is synthetic.
-- The carrier delay rate is computed over all rows before the train/test split,
-  so the test metrics are slightly optimistic.
-- `lane_volume` at serving time is a single average, not a per-lane lookup.
 - Spark runs in local mode only.
-- No CI, and no monitoring for drift between training and live traffic.
+- CI runs lint and unit tests only, not the Spark job.
+- No monitoring for drift between training and live traffic.

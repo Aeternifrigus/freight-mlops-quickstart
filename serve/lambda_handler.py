@@ -12,7 +12,8 @@ Input:
   "customs_declared_value_usd": 25000.0, "promised_transit_days": 25,
   "ship_month": 6
 }
-Carrier and lane aggregates come from carrier_reference.json.
+Carrier and lane history comes from carrier_reference.json, which training
+writes from the training split.
 """
 import json
 import os
@@ -41,12 +42,15 @@ REQUIRED_FIELDS = [
 
 
 def _enrich(payload: dict) -> dict:
-    """Add the aggregate and derived features the ETL job computes."""
+    """Add the history and derived features, looked up the same way training does."""
     payload = dict(payload)
-    ref = _carrier_ref.get(payload["carrier"], _carrier_ref["_default"])
+    ref = _carrier_ref["carriers"].get(payload["carrier"], _carrier_ref["_default_carrier"])
     payload["carrier_avg_delay_rate"] = ref["carrier_avg_delay_rate"]
     payload["carrier_shipment_count"] = ref["carrier_shipment_count"]
-    payload["lane_volume"] = _carrier_ref.get("_lane_default", 500)
+    lane = f"{payload['origin_country']}|{payload['destination_country']}"
+    payload["lane_volume"] = _carrier_ref["lanes"].get(
+        lane, _carrier_ref["_default_lane_volume"]
+    )
     payload["value_density_usd_per_kg"] = round(
         payload["customs_declared_value_usd"] / max(payload["weight_kg"], 1e-6), 2
     )

@@ -2,5 +2,12 @@
 line-length = 100
 target-version = "py311"
 
+[tool.pytest.ini_options]
+pythonpath = ["train"]
+testpaths = ["tests"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["history_features"]
+
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
