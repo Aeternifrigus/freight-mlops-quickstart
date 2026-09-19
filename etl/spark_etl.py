@@ -2,8 +2,12 @@
 PySpark ETL: raw shipments CSV to a model-ready feature table.
 
 Reads with an explicit schema, drops duplicates and bad rows, derives the
-is_delayed label, adds carrier and lane aggregates, and drops columns that are
+is_delayed label and per-row booking-time features, and drops columns that are
 only known after delivery.
+
+Aggregates over shipment history (carrier delay rate, carrier and lane volume)
+are not computed here. Over the whole table they would include the test
+period's labels, so train/history_features.py fits them on the training split.
 
     python etl/spark_etl.py --input data/raw_shipments.csv --output data/features.csv
 
@@ -15,7 +19,7 @@ import os
 import shutil
 import sys
 
-from pyspark.sql import SparkSession, Window
+from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
     DoubleType,
@@ -91,12 +95,12 @@ def run(input_path: str, output_path: str) -> None:
 
     # ---- 1. Clean ---------------------------------------------------
     df = df.dropDuplicates(["shipment_id"])
-    df = df.dropna(subset=["weight_kg", "fuel_price_index", "carrier", "mode"])
+    df = df.dropna(subset=["ship_date", "weight_kg", "fuel_price_index", "carrier", "mode"])
     df = df.filter((F.col("weight_kg") > 0) & (F.col("distance_km") > 0))
     clean_count = df.count()
 
     # ---- 2. Label and booking-time features --------------------------
-    # actual_transit_days and freight_cost_usd are dropped in step 5
+    # actual_transit_days and freight_cost_usd are dropped in step 3
     df = df.withColumn(
         "is_delayed",
         (F.col("actual_transit_days") > F.col("promised_transit_days")).cast("int"),
@@ -107,27 +111,12 @@ def run(input_path: str, output_path: str) -> None:
     )
     df = df.withColumn("ship_month", F.month("ship_date"))
 
-    # ---- 3. GroupBy aggregation -> carrier historical delay rate -----
-    carrier_stats = (
-        df.groupBy("carrier")
-        .agg(
-            F.avg("is_delayed").alias("carrier_avg_delay_rate"),
-            F.count("*").alias("carrier_shipment_count"),
-        )
-    )
-    df = df.join(F.broadcast(carrier_stats), on="carrier", how="left")
-
-    # ---- 4. Window function -> shipment count per lane ---------------
-    lane_window = Window.partitionBy("origin_country", "destination_country")
-    df = df.withColumn("lane_volume", F.count("shipment_id").over(lane_window))
-
-    # ---- 5. Select booking-time feature set (drop leakage columns) ---
+    # ---- 3. Select booking-time feature set (drop leakage columns) ---
     feature_cols = [
-        "shipment_id", "origin_country", "destination_country", "carrier", "mode",
-        "weight_kg", "volume_cbm", "distance_km", "num_items", "is_hazardous",
+        "shipment_id", "ship_date", "origin_country", "destination_country", "carrier",
+        "mode", "weight_kg", "volume_cbm", "distance_km", "num_items", "is_hazardous",
         "fuel_price_index", "customs_declared_value_usd", "value_density_usd_per_kg",
-        "promised_transit_days", "ship_month", "carrier_avg_delay_rate",
-        "carrier_shipment_count", "lane_volume", "is_delayed",
+        "promised_transit_days", "ship_month", "is_delayed",
     ]
     out = df.select(*feature_cols)
 

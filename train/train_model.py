@@ -2,7 +2,13 @@
 Train the delay classifier on the ETL feature table and save the model, encoder
 and column lists together as one bundle for serving.
 
-    python train/train_model.py --input data/features.csv --out train/model_bundle.joblib
+The split is by ship date: the newest 20% of shipments are the test set. The
+carrier and lane history features are fitted on the training rows only and
+written to the carrier reference that serving reads, so training, evaluation
+and serving all see the same values.
+
+    python train/train_model.py --input data/features.csv --out train/model_bundle.joblib \
+        --reference-out serve/carrier_reference.json
 """
 import argparse
 import json
@@ -18,8 +24,9 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
+
+from history_features import apply_reference, fit_reference, time_split
 
 CATEGORICAL = ["origin_country", "destination_country", "carrier", "mode"]
 NUMERIC = [
@@ -49,16 +56,19 @@ def main():
     ap.add_argument("--input", default="data/features.csv")
     ap.add_argument("--out", default="train/model_bundle.joblib")
     ap.add_argument("--metrics-out", default="train/metrics.json")
+    ap.add_argument("--reference-out", default="serve/carrier_reference.json")
     args = ap.parse_args()
 
     df = pd.read_csv(args.input)
 
-    X = df[CATEGORICAL + NUMERIC]
-    y = df[TARGET]
+    train_df, test_df, cutoff = time_split(df)
+    reference = fit_reference(train_df)
+    train_df = apply_reference(train_df, reference)
+    test_df = apply_reference(test_df, reference)
+    print(f"[train] cutoff {cutoff.date()}: {len(train_df)} train, {len(test_df)} test")
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
-    )
+    X_train, y_train = train_df[CATEGORICAL + NUMERIC], train_df[TARGET]
+    X_test, y_test = test_df[CATEGORICAL + NUMERIC], test_df[TARGET]
 
     encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     X_train_cat = encoder.fit_transform(X_train[CATEGORICAL])
@@ -86,6 +96,7 @@ def main():
         "roc_auc": round(roc_auc_score(y_test, y_proba), 4),
         "n_train": len(X_train),
         "n_test": len(X_test),
+        "split_cutoff": str(cutoff.date()),
     }
     print("[train] metrics:", json.dumps(metrics, indent=2))
 
@@ -111,7 +122,9 @@ def main():
     joblib.dump(bundle, args.out)
     with open(args.metrics_out, "w") as f:
         json.dump(metrics, f, indent=2)
-    print(f"[train] saved model bundle to {args.out}")
+    with open(args.reference_out, "w") as f:
+        json.dump(reference, f, indent=2)
+    print(f"[train] saved model bundle to {args.out}, reference to {args.reference_out}")
 
     try_log_mlflow(params, metrics)
 
