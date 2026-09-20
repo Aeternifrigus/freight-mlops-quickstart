@@ -31,11 +31,12 @@ def predict_fn(payload, bundle):
     num_cols = bundle["numeric_cols"]
     ref = bundle["carrier_reference"]
 
-    carrier_ref = ref.get(payload["carrier"], ref["_default"])
+    carrier_ref = ref["carriers"].get(payload["carrier"], ref["_default_carrier"])
     row = dict(payload)
     row["carrier_avg_delay_rate"] = carrier_ref["carrier_avg_delay_rate"]
     row["carrier_shipment_count"] = carrier_ref["carrier_shipment_count"]
-    row["lane_volume"] = ref.get("_lane_default", 500)
+    lane = f"{row['origin_country']}|{row['destination_country']}"
+    row["lane_volume"] = ref["lanes"].get(lane, ref["_default_lane_volume"])
     row["value_density_usd_per_kg"] = round(
         row["customs_declared_value_usd"] / max(row["weight_kg"], 1e-6), 2
     )
